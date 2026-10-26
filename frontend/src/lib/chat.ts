@@ -1,3 +1,4 @@
+import { api } from "./api";
 import type { LegalDocument } from "./documents";
 
 export interface ChatMessage {
@@ -12,12 +13,6 @@ export const GREETING: ChatMessage = {
 };
 
 /** Sends the conversation and current document to the AI; resolves with its reply and the updated document. */
-export async function sendChat(messages: ChatMessage[], draft: LegalDocument): Promise<{ reply: string; document: LegalDocument }> {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, document: draft }),
-  });
-  if (!response.ok) throw new Error(`Chat request failed with status ${response.status}`);
-  return response.json();
+export function sendChat(messages: ChatMessage[], draft: LegalDocument): Promise<{ reply: string; document: LegalDocument }> {
+  return api("/api/chat", "POST", { messages, document: draft });
 }

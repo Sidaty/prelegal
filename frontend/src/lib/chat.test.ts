@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GREETING, sendChat } from "./chat";
 import { EMPTY_DRAFT } from "./documents";
 
+beforeEach(() => vi.stubGlobal("document", { cookie: "" }));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("sendChat", () => {
