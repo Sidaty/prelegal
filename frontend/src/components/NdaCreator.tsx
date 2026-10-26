@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { downloadBlob } from "@/lib/download";
 import { DEFAULT_NDA, fillCoverPage, formatStandardTerms, pdfFileName, type NdaData } from "@/lib/nda";
-import { NdaForm } from "./NdaForm";
+import { NdaChat } from "./NdaChat";
 import { NdaPreview } from "./NdaPreview";
 
 interface NdaCreatorProps {
@@ -72,8 +72,8 @@ export function NdaCreator({ coverPageTemplate, standardTermsTemplate }: NdaCrea
       </header>
 
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <section aria-label="NDA details">
-          <NdaForm data={data} onChange={setData} />
+        <section aria-label="Chat with the assistant">
+          <NdaChat data={data} onChange={setData} />
         </section>
         <section aria-label="Document preview" className="min-w-0">
           <NdaPreview coverPage={coverPage} standardTerms={standardTerms} />

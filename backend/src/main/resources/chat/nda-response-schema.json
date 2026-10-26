@@ -1,0 +1,54 @@
+{
+  "type": "object",
+  "properties": {
+    "reply": {
+      "type": "string",
+      "description": "Your next chat message to the user, in the user's language."
+    },
+    "nda": {
+      "type": "object",
+      "description": "All Mutual NDA cover page fields after applying the conversation. Field values are in English. Use an empty string for anything still unknown.",
+      "properties": {
+        "purpose": { "type": "string", "description": "How Confidential Information may be used." },
+        "effectiveDate": {
+          "anyOf": [{ "type": "string", "format": "date" }, { "type": "string", "enum": [""] }],
+          "description": "Effective date as yyyy-mm-dd, or empty while unknown."
+        },
+        "mndaTerm": {
+          "type": "string",
+          "enum": ["expires", "untilTerminated"],
+          "description": "expires: the MNDA expires mndaTermYears after the Effective Date. untilTerminated: continues until terminated."
+        },
+        "mndaTermYears": { "type": "integer", "minimum": 1, "description": "Years before the MNDA expires." },
+        "confidentialityTerm": {
+          "type": "string",
+          "enum": ["years", "perpetual"],
+          "description": "years: confidentiality lasts confidentialityYears after the Effective Date. perpetual: in perpetuity."
+        },
+        "confidentialityYears": { "type": "integer", "minimum": 1, "description": "Years confidentiality lasts." },
+        "governingLaw": { "type": "string", "description": "US state whose laws govern, e.g. Delaware." },
+        "jurisdiction": { "type": "string", "description": "City or county and state of the courts, e.g. courts located in New Castle, DE." },
+        "modifications": { "type": "string", "description": "Modifications to the standard terms, or empty for none." },
+        "party1": { "$ref": "#/$defs/party" },
+        "party2": { "$ref": "#/$defs/party" }
+      },
+      "required": [
+        "purpose", "effectiveDate", "mndaTerm", "mndaTermYears", "confidentialityTerm",
+        "confidentialityYears", "governingLaw", "jurisdiction", "modifications", "party1", "party2"
+      ]
+    }
+  },
+  "required": ["reply", "nda"],
+  "$defs": {
+    "party": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the person signing." },
+        "title": { "type": "string", "description": "Job title of the person signing." },
+        "company": { "type": "string", "description": "Legal name of the company." },
+        "noticeAddress": { "type": "string", "description": "Email or postal address for notices." }
+      },
+      "required": ["name", "title", "company", "noticeAddress"]
+    }
+  }
+}
