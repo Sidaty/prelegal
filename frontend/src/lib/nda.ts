@@ -1,16 +1,11 @@
 /**
- * Fills the Common Paper Mutual NDA templates (see /templates) with the
- * information entered by the user. Templates stay the single source of truth:
+ * Fills the Common Paper Mutual NDA cover page template (see /templates) with the
+ * information gathered in the chat. Templates stay the single source of truth:
  * we only substitute their placeholders, so any field left blank keeps the
  * original placeholder text (e.g. "[Fill in state]").
  */
-
-export interface Party {
-  name: string;
-  title: string;
-  company: string;
-  noticeAddress: string;
-}
+import { isoDate, termValue, type LegalDocument, type Party } from "./documents";
+import { formatDate, partyRow, toInline } from "./markdown";
 
 export interface NdaData {
   purpose: string;
@@ -27,54 +22,26 @@ export interface NdaData {
   party2: Party;
 }
 
-const emptyParty: Party = { name: "", title: "", company: "", noticeAddress: "" };
-
-export const DEFAULT_NDA: NdaData = {
-  purpose: "Evaluating whether to enter into a business relationship with the other party.",
-  effectiveDate: "",
-  mndaTerm: "expires",
-  mndaTermYears: 1,
-  confidentialityTerm: "years",
-  confidentialityYears: 1,
-  governingLaw: "",
-  jurisdiction: "",
-  modifications: "",
-  party1: emptyParty,
-  party2: emptyParty,
-};
-
-/** Signature table rows filled from each party; "Signature" and "Date" stay blank for signing. */
-const PARTY_ROWS: Record<string, keyof Party> = {
-  "Print Name": "name",
-  Title: "title",
-  Company: "company",
-  "Notice Address": "noticeAddress",
-};
-
-export function formatDate(isoDate: string): string {
-  // Parse as UTC so the displayed day never shifts with the user's timezone.
-  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "long",
-  });
+/** Reads the NDA fields from a draft's terms (keys in documents.json); terms default to 1 year. */
+export function toNdaData(draft: LegalDocument): NdaData {
+  const term = (key: string) => termValue(draft, key);
+  return {
+    purpose: term("purpose"),
+    effectiveDate: isoDate(term("effectiveDate")),
+    mndaTerm: term("mndaTerm") === "untilTerminated" ? "untilTerminated" : "expires",
+    mndaTermYears: Number(term("mndaTermYears")) || 1,
+    confidentialityTerm: term("confidentialityTerm") === "perpetual" ? "perpetual" : "years",
+    confidentialityYears: Number(term("confidentialityYears")) || 1,
+    governingLaw: term("governingLaw"),
+    jurisdiction: term("jurisdiction"),
+    modifications: term("modifications"),
+    party1: draft.party1,
+    party2: draft.party2,
+  };
 }
 
 function formatYears(years: number): string {
   return years === 1 ? "1 year" : `${years} years`;
-}
-
-/** Escapes markdown syntax so user input is always rendered literally. */
-export function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_{}[\]()<>#+\-.!|~&:@]/g, "\\$&");
-}
-
-/** Escapes user input as inline markdown; line breaks become hard breaks (or `lineSeparator`). */
-function toInline(value: string, lineSeparator = "  \n"): string {
-  return value
-    .split("\n")
-    .map((line) => escapeMarkdown(line.trim()))
-    .filter(Boolean)
-    .join(lineSeparator);
 }
 
 /** Replaces the first match of `placeholder` with `value`, unless `value` is blank. */
@@ -129,20 +96,7 @@ export function fillCoverPage(template: string, data: NdaData): string {
     body.replace(/^List any modifications to the MNDA$/m, () => toInline(data.modifications) || "None."),
   );
 
-  return md.replace(/^\| (Print Name|Title|Company|Notice Address) \|.*$/gm, (_, label: string) => {
-    const field = PARTY_ROWS[label];
-    return `| ${label} | ${toInline(data.party1[field], ", ")} | ${toInline(data.party2[field], ", ")} |`;
-  });
-}
-
-/** Turns the cover-page references of the Standard Terms into emphasized defined terms. */
-export function formatStandardTerms(template: string): string {
-  return template.replace(/<span class="coverpage_link">(.*?)<\/span>/g, "_$1_");
-}
-
-export function pdfFileName(data: NdaData): string {
-  const companies = [data.party1.company, data.party2.company]
-    .map((company) => company.trim().replace(/[^\p{L}\p{N}-]+/gu, "-").replace(/^-+|-+$/g, ""))
-    .filter(Boolean);
-  return ["Mutual-NDA", ...companies].join("_") + ".pdf";
+  return md.replace(/^\| (Print Name|Title|Company|Notice Address) \|.*$/gm, (_, label: string) =>
+    partyRow(label, data.party1, data.party2),
+  );
 }

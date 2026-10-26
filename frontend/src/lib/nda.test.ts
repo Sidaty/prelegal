@@ -1,37 +1,15 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { marked, type Token } from "marked";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NDA, fillCoverPage, formatDate, formatStandardTerms, pdfFileName, type NdaData } from "./nda";
+import { EMPTY_DRAFT, type LegalDocument } from "./documents";
+import { formatDate } from "./markdown";
+import { fillCoverPage, toNdaData, type NdaData } from "./nda";
+import { readTemplate, renderedText } from "./test-utils";
 
-const templatesDir = join(__dirname, "../../../templates");
-const coverPage = readFileSync(join(templatesDir, "Mutual-NDA-coverpage.md"), "utf8");
-const standardTerms = readFileSync(join(templatesDir, "Mutual-NDA.md"), "utf8");
+const coverPage = readTemplate("Mutual-NDA-coverpage.md");
 
-/** Text as rendered from the markdown, one line per block / list item / table row. */
-function renderedText(md: string): string {
-  const inline = (tokens: Token[] = []): string =>
-    tokens
-      .map((t) => {
-        if (t.type === "checkbox") return t.checked ? "[x] " : "[ ] ";
-        if (t.type === "br") return "\n";
-        if (t.type === "html") return "";
-        return "tokens" in t && t.tokens ? inline(t.tokens) : "text" in t ? t.text : "";
-      })
-      .join("");
-  return marked
-    .lexer(md)
-    .flatMap((t): string[] => {
-      if (t.type === "list") return t.items.map((item: { tokens: Token[] }) => inline(item.tokens));
-      if (t.type === "table")
-        return [t.header, ...t.rows].map((row: { tokens: Token[] }[]) => row.map((c) => inline(c.tokens)).join(" | "));
-      return "tokens" in t ? [inline(t.tokens)] : [];
-    })
-    .join("\n");
-}
+const blankNda = toNdaData(EMPTY_DRAFT);
 
 const data: NdaData = {
-  ...DEFAULT_NDA,
+  ...blankNda,
   purpose: "Exploring a joint venture.",
   effectiveDate: "2026-10-26",
   mndaTerm: "untilTerminated",
@@ -76,7 +54,7 @@ describe("fillCoverPage", () => {
   });
 
   it("keeps template placeholders for blank fields", () => {
-    const blank = renderedText(fillCoverPage(coverPage, DEFAULT_NDA));
+    const blank = renderedText(fillCoverPage(coverPage, blankNda));
     expect(blank).toContain("[Today’s date]");
     expect(blank).toContain("[Fill in state]");
     expect(blank).toContain("[x] Expires 1 year from Effective Date.");
@@ -104,26 +82,43 @@ describe("fillCoverPage", () => {
   });
 });
 
-describe("formatStandardTerms", () => {
-  it("replaces cover page links with emphasized terms", () => {
-    const formatted = formatStandardTerms(standardTerms);
-    expect(formatted).not.toContain("coverpage_link");
-    expect(formatted).toContain("the laws of the State of _Governing Law_");
-  });
-});
-
 describe("formatDate", () => {
   it("does not shift the day across timezones", () => {
     expect(formatDate("2026-01-01")).toBe("January 1, 2026");
   });
 });
 
-describe("pdfFileName", () => {
-  it("includes sanitized company names", () => {
-    expect(pdfFileName(data)).toBe("Mutual-NDA_Acme-Inc_Globex-Labs.pdf");
-    expect(pdfFileName({ ...data, party1: { ...data.party1, company: "Société Générale" } })).toBe(
-      "Mutual-NDA_Société-Générale_Globex-Labs.pdf",
-    );
-    expect(pdfFileName(DEFAULT_NDA)).toBe("Mutual-NDA.pdf");
+
+describe("toNdaData", () => {
+  const draft: LegalDocument = {
+    ...EMPTY_DRAFT,
+    type: "mutual-nda",
+    party1: data.party1,
+    terms: [
+      { key: "effectiveDate", value: "2026-10-26" },
+      { key: "mndaTerm", value: "untilTerminated" },
+      { key: "confidentialityYears", value: "3" },
+      { key: "governingLaw", value: "Delaware" },
+    ],
+  };
+
+  it("reads the NDA fields from the draft's terms", () => {
+    expect(toNdaData(draft)).toMatchObject({
+      effectiveDate: "2026-10-26",
+      mndaTerm: "untilTerminated",
+      confidentialityTerm: "years",
+      confidentialityYears: 3,
+      governingLaw: "Delaware",
+      party1: data.party1,
+    });
+  });
+
+  it("defaults terms to 1 year and ignores dates that are not yyyy-mm-dd", () => {
+    expect(toNdaData({ ...draft, terms: [{ key: "effectiveDate", value: "next Monday" }] })).toMatchObject({
+      effectiveDate: "",
+      mndaTerm: "expires",
+      mndaTermYears: 1,
+      confidentialityYears: 1,
+    });
   });
 });

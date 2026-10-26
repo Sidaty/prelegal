@@ -1,6 +1,7 @@
 package com.prelegal.chat;
 
-import static com.prelegal.chat.NdaChatServiceTests.EMPTY_NDA;
+import static com.prelegal.chat.DocumentChatServiceTests.EMPTY_DOCUMENT;
+import static com.prelegal.chat.DocumentChatServiceTests.EMPTY_PARTY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -24,29 +25,30 @@ class ChatControllerTests {
     private MockMvcTester mvc;
 
     @MockitoBean
-    private NdaChatService service;
+    private DocumentChatService service;
 
     @Test
-    void returnsReplyAndUpdatedFields() {
-        NdaData updated = new NdaData("", "", "expires", 1, "years", 1, "Delaware", "", "",
-                NdaChatServiceTests.EMPTY_PARTY, NdaChatServiceTests.EMPTY_PARTY);
+    void returnsReplyAndUpdatedDocument() {
+        Document updated = new Document("mutual-nda", EMPTY_PARTY, EMPTY_PARTY,
+                List.of(new Document.Term("governingLaw", "Delaware")));
         given(service.reply(any())).willReturn(new ChatResponse("Noted: Delaware law.", updated));
 
         assertThat(mvc.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).content("""
-                {"messages":[{"role":"user","text":"Delaware law please"}],
-                 "nda":{"purpose":"","effectiveDate":"","mndaTerm":"expires","mndaTermYears":1,
-                        "confidentialityTerm":"years","confidentialityYears":1,"governingLaw":"",
-                        "jurisdiction":"","modifications":"",
-                        "party1":{"name":"","title":"","company":"","noticeAddress":""},
-                        "party2":{"name":"","title":"","company":"","noticeAddress":""}}}
+                {"messages":[{"role":"user","text":"An NDA under Delaware law"}],
+                 "document":{"type":"","terms":[],
+                             "party1":{"name":"","title":"","company":"","noticeAddress":""},
+                             "party2":{"name":"","title":"","company":"","noticeAddress":""}}}
                 """))
                 .hasStatusOk()
                 .bodyJson()
-                .isLenientlyEqualTo("{\"reply\":\"Noted: Delaware law.\",\"nda\":{\"governingLaw\":\"Delaware\"}}");
+                .isLenientlyEqualTo("""
+                        {"reply":"Noted: Delaware law.",
+                         "document":{"type":"mutual-nda","terms":[{"key":"governingLaw","value":"Delaware"}]}}
+                        """);
 
         ArgumentCaptor<ChatRequest> request = ArgumentCaptor.forClass(ChatRequest.class);
         verify(service).reply(request.capture());
-        assertThat(request.getValue().messages()).containsExactly(new ChatMessage("user", "Delaware law please"));
-        assertThat(request.getValue().nda()).isEqualTo(EMPTY_NDA);
+        assertThat(request.getValue().messages()).containsExactly(new ChatMessage("user", "An NDA under Delaware law"));
+        assertThat(request.getValue().document()).isEqualTo(EMPTY_DOCUMENT);
     }
 }

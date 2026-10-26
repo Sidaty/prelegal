@@ -1,6 +1,6 @@
 import type { Token, Tokens } from "marked";
 
-/** HTML renderer for the markdown tokens of the filled NDA (mirrors NdaPdfDocument). */
+/** HTML renderer for the markdown tokens of the filled document (mirrors DocumentPdf). */
 
 function Inline({ tokens }: { tokens: Token[] }) {
   return tokens.map((token, i) => {
@@ -130,12 +130,12 @@ function Blocks({ tokens }: { tokens: Token[] }) {
   return tokens.map((token, i) => <Block key={i} token={token} />);
 }
 
-interface NdaPreviewProps {
+interface DocumentPreviewProps {
   coverPage: Token[];
   standardTerms: Token[];
 }
 
-export function NdaPreview({ coverPage, standardTerms }: NdaPreviewProps) {
+export function DocumentPreview({ coverPage, standardTerms }: DocumentPreviewProps) {
   return (
     <article className="mx-auto max-w-[8.5in] bg-white px-8 py-10 font-serif text-[15px] leading-relaxed text-stone-900 shadow-lg ring-1 ring-stone-200 sm:px-14">
       <Blocks tokens={coverPage} />

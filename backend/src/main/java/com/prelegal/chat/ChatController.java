@@ -4,13 +4,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Chat endpoint that fills in the Mutual NDA from a freeform conversation. */
+/** Chat endpoint that drafts a legal document from a freeform conversation. */
 @RestController
 public class ChatController {
 
-    private final NdaChatService chat;
+    private final DocumentChatService chat;
 
-    public ChatController(NdaChatService chat) {
+    public ChatController(DocumentChatService chat) {
         this.chat = chat;
     }
 

@@ -1,4 +1,4 @@
-import type { NdaData } from "./nda";
+import type { LegalDocument } from "./documents";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -8,15 +8,15 @@ export interface ChatMessage {
 /** Shown before the first exchange, without calling the AI. */
 export const GREETING: ChatMessage = {
   role: "assistant",
-  text: "Hi! I'll help you prepare a Mutual Non-Disclosure Agreement. To start, which two companies are entering into this NDA, and what is the purpose of sharing confidential information?",
+  text: "Hi! I'll help you draft a legal agreement, such as an NDA, a cloud service agreement, a data processing agreement or a pilot agreement. What would you like to put in place, and with whom?",
 };
 
-/** Sends the conversation and current fields to the AI; resolves with its reply and the updated fields. */
-export async function sendChat(messages: ChatMessage[], nda: NdaData): Promise<{ reply: string; nda: NdaData }> {
+/** Sends the conversation and current document to the AI; resolves with its reply and the updated document. */
+export async function sendChat(messages: ChatMessage[], draft: LegalDocument): Promise<{ reply: string; document: LegalDocument }> {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, nda }),
+    body: JSON.stringify({ messages, document: draft }),
   });
   if (!response.ok) throw new Error(`Chat request failed with status ${response.status}`);
   return response.json();

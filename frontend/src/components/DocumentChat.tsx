@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { GREETING, sendChat, type ChatMessage } from "@/lib/chat";
-import type { NdaData } from "@/lib/nda";
+import type { LegalDocument } from "@/lib/documents";
 
-interface NdaChatProps {
-  data: NdaData;
-  onChange: (data: NdaData) => void;
+interface DocumentChatProps {
+  draft: LegalDocument;
+  onChange: (draft: LegalDocument) => void;
 }
 
-/** Freeform chat with the AI, which asks about the NDA and fills in its fields from the answers. */
-export function NdaChat({ data, onChange }: NdaChatProps) {
+/** Freeform chat with the AI, which picks the document with the user and fills it in from the answers. */
+export function DocumentChat({ draft, onChange }: DocumentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -31,9 +31,9 @@ export function NdaChat({ data, onChange }: NdaChatProps) {
     setError(null);
     setPending(true);
     try {
-      const response = await sendChat(conversation, data);
+      const response = await sendChat(conversation, draft);
       setMessages([...conversation, { role: "assistant", text: response.reply }]);
-      onChange(response.nda);
+      onChange(response.document);
     } catch (e) {
       console.error(e);
       // Give the message back so the user can resend it.
