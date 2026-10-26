@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "reply": {
+      "type": "string",
+      "description": "Your next chat message to the user, in the user's language."
+    },
+    "document": {
+      "type": "object",
+      "description": "The document being drafted, after applying the conversation. Values are in English. Use an empty string for anything still unknown.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": "{documentTypes}",
+          "description": "Id of the document the user confirmed they want, or empty while not chosen."
+        },
+        "party1": { "$ref": "#/$defs/party" },
+        "party2": { "$ref": "#/$defs/party" },
+        "terms": {
+          "type": "array",
+          "description": "Values of the chosen document's key terms. Include every term known so far.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "enum": "{termKeys}" },
+              "value": { "type": "string" }
+            },
+            "required": ["key", "value"]
+          }
+        }
+      },
+      "required": ["type", "party1", "party2", "terms"]
+    }
+  },
+  "required": ["reply", "document"],
+  "$defs": {
+    "party": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the person signing." },
+        "title": { "type": "string", "description": "Job title of the person signing." },
+        "company": { "type": "string", "description": "Legal name of the company." },
+        "noticeAddress": { "type": "string", "description": "Email or postal address for notices." }
+      },
+      "required": ["name", "title", "company", "noticeAddress"]
+    }
+  }
+}

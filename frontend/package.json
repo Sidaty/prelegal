@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "copy-templates": "node -e \"const fs = require('node:fs'); fs.rmSync('public/templates', { recursive: true, force: true }); fs.cpSync('../templates', 'public/templates', { recursive: true })\"",
+    "predev": "npm run copy-templates",
     "dev": "next dev",
+    "prebuild": "npm run copy-templates",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -1,17 +1,10 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { Metadata } from "next";
-import { NdaCreator } from "@/components/NdaCreator";
+import { DocumentCreator } from "@/components/DocumentCreator";
 
 export const metadata: Metadata = {
-  title: "Mutual NDA Creator | Prelegal",
+  title: "Draft a document | Prelegal",
 };
 
-// The Common Paper templates live at the repository root; synchronous reads are prerendered at build time.
-const templatesDir = join(process.cwd(), "..", "templates");
-
-export default function Home() {
-  const coverPageTemplate = readFileSync(join(templatesDir, "Mutual-NDA-coverpage.md"), "utf8");
-  const standardTermsTemplate = readFileSync(join(templatesDir, "Mutual-NDA.md"), "utf8");
-  return <NdaCreator coverPageTemplate={coverPageTemplate} standardTermsTemplate={standardTermsTemplate} />;
+export default function AppPage() {
+  return <DocumentCreator />;
 }

@@ -1,7 +1,7 @@
 import { Document, Font, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Token, Tokens } from "marked";
 
-/** react-pdf renderer for the markdown tokens of the filled NDA (mirrors NdaPreview). */
+/** react-pdf renderer for the markdown tokens of the filled document (mirrors DocumentPreview). */
 
 // Legal text should never be hyphenated mid-word.
 Font.registerHyphenationCallback((word) => [word]);
@@ -148,14 +148,15 @@ function Blocks({ tokens }: { tokens: Token[] }) {
   return tokens.map((token, i) => <Block key={i} token={token} />);
 }
 
-interface NdaPdfDocumentProps {
+interface DocumentPdfProps {
+  title: string;
   coverPage: Token[];
   standardTerms: Token[];
 }
 
-export function NdaPdfDocument({ coverPage, standardTerms }: NdaPdfDocumentProps) {
+export function DocumentPdf({ title, coverPage, standardTerms }: DocumentPdfProps) {
   return (
-    <Document title="Mutual Non-Disclosure Agreement" creator="Prelegal">
+    <Document title={title} creator="Prelegal">
       <Page size="LETTER" style={styles.page}>
         <Blocks tokens={coverPage} />
       </Page>
