@@ -4,6 +4,14 @@
   --font-sans: var(--font-geist-sans);
 }
 
+@theme {
+  --color-accent: #ecad0a;
+  --color-primary: #209dd7;
+  --color-submit: #753991;
+  --color-navy: #032147;
+  --color-muted: #888888;
+}
+
 body {
   background: var(--color-stone-100);
   color: var(--color-stone-900);

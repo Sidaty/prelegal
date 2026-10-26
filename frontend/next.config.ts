@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Exported as static files and served by the Spring Boot backend; each route becomes <route>/index.html.
+  output: "export",
+  trailingSlash: true,
   turbopack: {
     rules: {
       "*.css": {

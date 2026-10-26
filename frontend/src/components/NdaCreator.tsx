@@ -1,6 +1,7 @@
 "use client";
 
 import { marked } from "marked";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { downloadBlob } from "@/lib/download";
 import { DEFAULT_NDA, fillCoverPage, formatStandardTerms, pdfFileName, type NdaData } from "@/lib/nda";
@@ -44,11 +45,11 @@ export function NdaCreator({ coverPageTemplate, standardTermsTemplate }: NdaCrea
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-t-4 border-b border-t-accent border-b-stone-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div>
-            <h1 className="text-lg font-semibold text-stone-900">Mutual NDA Creator</h1>
-            <p className="text-xs text-stone-500">Based on the Common Paper Mutual NDA (Version 1.0)</p>
+            <h1 className="text-lg font-semibold text-navy">Mutual NDA Creator</h1>
+            <p className="text-xs text-muted">Based on the Common Paper Mutual NDA (Version 1.0)</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Always mounted so screen readers announce the error when it appears. */}
@@ -59,10 +60,13 @@ export function NdaCreator({ coverPageTemplate, standardTermsTemplate }: NdaCrea
               type="button"
               onClick={downloadPdf}
               disabled={downloading}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 disabled:cursor-wait disabled:opacity-60"
+              className="rounded-md bg-submit px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
             >
               {downloading ? "Generating…" : "Download PDF"}
             </button>
+            <Link href="/" className="text-sm font-medium text-primary hover:underline">
+              Sign out
+            </Link>
           </div>
         </div>
       </header>
