@@ -34,6 +34,7 @@ const styles = StyleSheet.create({
   headerCell: { fontWeight: "bold", backgroundColor: "#f5f5f4" },
   link: { color: "#1d4ed8" },
   standardTerms: { marginTop: 8 },
+  footer: { position: "absolute", bottom: 24, left: 64, right: 64, fontSize: 8, color: "#6b7280", textAlign: "center" },
 });
 
 function Inline({ tokens }: { tokens: Token[] }) {
@@ -148,6 +149,19 @@ function Blocks({ tokens }: { tokens: Token[] }) {
   return tokens.map((token, i) => <Block key={i} token={token} />);
 }
 
+/** Repeated at the bottom of every page. */
+function DraftFooter() {
+  return (
+    <Text
+      fixed
+      style={styles.footer}
+      render={({ pageNumber, totalPages }) =>
+        `Draft prepared with Prelegal. Not legal advice; subject to review by a qualified lawyer. Page ${pageNumber} of ${totalPages}`
+      }
+    />
+  );
+}
+
 interface DocumentPdfProps {
   title: string;
   coverPage: Token[];
@@ -159,11 +173,13 @@ export function DocumentPdf({ title, coverPage, standardTerms }: DocumentPdfProp
     <Document title={title} creator="Prelegal">
       <Page size="LETTER" style={styles.page}>
         <Blocks tokens={coverPage} />
+        <DraftFooter />
       </Page>
       <Page size="LETTER" style={styles.page}>
         <View style={styles.standardTerms}>
           <Blocks tokens={standardTerms} />
         </View>
+        <DraftFooter />
       </Page>
     </Document>
   );

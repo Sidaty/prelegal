@@ -14,7 +14,7 @@ scripts/start-mac.sh      # or start-linux.sh / start-windows.ps1
 scripts/stop-mac.sh       # or stop-linux.sh / stop-windows.ps1
 ```
 
-The login screen is a placeholder: any email and password enter the platform. The SQLite database is recreated on every start.
+Create an account to sign in. Your documents are saved as you draft them, but the SQLite database is recreated on every start, so accounts and documents do not survive a restart.
 
 ## Structure
 

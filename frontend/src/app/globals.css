@@ -10,9 +10,24 @@
   --color-submit: #753991;
   --color-navy: #032147;
   --color-muted: #888888;
+  --color-surface: #f6f7f9;
+  --color-line: #e3e6eb;
 }
 
 body {
-  background: var(--color-stone-100);
+  background: var(--color-surface);
   color: var(--color-stone-900);
+}
+
+/* One visible keyboard focus style across the app. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
 }

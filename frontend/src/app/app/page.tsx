@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { DocumentCreator } from "@/components/DocumentCreator";
+import { DocumentList } from "@/components/DocumentList";
 
 export const metadata: Metadata = {
-  title: "Draft a document | Prelegal",
+  title: "Your documents | Prelegal",
 };
 
-export default function AppPage() {
-  return <DocumentCreator />;
+export default function DocumentsPage() {
+  return <DocumentList />;
 }

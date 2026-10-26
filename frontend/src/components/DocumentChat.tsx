@@ -1,49 +1,50 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { GREETING, sendChat, type ChatMessage } from "@/lib/chat";
+import { sendChat, type ChatMessage } from "@/lib/chat";
 import type { LegalDocument } from "@/lib/documents";
 
 interface DocumentChatProps {
   draft: LegalDocument;
-  onChange: (draft: LegalDocument) => void;
+  messages: ChatMessage[];
+  /** Called after each answer of the AI, with the whole conversation and the updated document. */
+  onTurn: (messages: ChatMessage[], draft: LegalDocument) => void;
 }
 
 /** Freeform chat with the AI, which picks the document with the user and fills it in from the answers. */
-export function DocumentChat({ draft, onChange }: DocumentChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
+export function DocumentChat({ draft, messages, onTurn }: DocumentChatProps) {
   const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
+  // The message being answered, shown until the AI replies.
+  const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messages, sending]);
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const text = input.trim();
-    if (!text || pending) return;
+    if (!text || sending) return;
     const conversation: ChatMessage[] = [...messages, { role: "user", text }];
-    setMessages(conversation);
     setInput("");
     setError(null);
-    setPending(true);
+    setSending(text);
     try {
       const response = await sendChat(conversation, draft);
-      setMessages([...conversation, { role: "assistant", text: response.reply }]);
-      onChange(response.document);
+      onTurn([...conversation, { role: "assistant", text: response.reply }], response.document);
     } catch (e) {
       console.error(e);
       // Give the message back so the user can resend it.
-      setMessages(messages);
       setInput(text);
-      setError("The assistant could not answer. Please try again.");
+      setError("The assistant could not answer. Send your message again.");
     } finally {
-      setPending(false);
+      setSending(null);
     }
   }
+
+  const shown: ChatMessage[] = sending === null ? messages : [...messages, { role: "user", text: sending }];
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     // Enter also confirms IME composition (e.g. Japanese input); only send outside of it.
@@ -51,27 +52,27 @@ export function DocumentChat({ draft, onChange }: DocumentChatProps) {
   }
 
   return (
-    <div className="flex h-[70vh] flex-col rounded-xl border border-stone-200 bg-white shadow-sm lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]">
+    <div className="flex h-[70vh] flex-col rounded-lg border border-line bg-white lg:sticky lg:top-[4.5rem] lg:h-[calc(100vh-6rem)]">
       <ol ref={listRef} aria-label="Conversation" className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.map((message, index) => (
+        {shown.map((message, index) => (
           <li key={index} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
             <p
-              className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
-                message.role === "user" ? "bg-primary text-white" : "bg-stone-100 text-stone-900"
+              className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                message.role === "user" ? "bg-primary text-white" : "bg-surface text-stone-900"
               }`}
             >
               {message.text}
             </p>
           </li>
         ))}
-        {pending && (
+        {sending !== null && (
           <li className="flex justify-start">
-            <p className="rounded-2xl bg-stone-100 px-4 py-2 text-sm text-muted">Thinking…</p>
+            <p className="rounded-2xl bg-surface px-4 py-2 text-sm text-muted">Thinking…</p>
           </li>
         )}
       </ol>
-      <form onSubmit={send} className="border-t border-stone-200 p-3">
-        <p role="status" aria-live="polite" className="mb-2 text-sm text-red-600 empty:hidden">
+      <form onSubmit={send} className="border-t border-line p-3">
+        <p role="alert" className="mb-2 text-sm text-red-700 empty:hidden">
           {error}
         </p>
         <div className="flex items-end gap-2">
@@ -82,12 +83,12 @@ export function DocumentChat({ draft, onChange }: DocumentChatProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your answer…"
-            className="flex-1 resize-none rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="flex-1 resize-none rounded-md border border-line px-3 py-2 text-sm text-stone-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <button
             type="submit"
-            disabled={pending || !input.trim()}
-            className="rounded-md bg-submit px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+            disabled={sending !== null || !input.trim()}
+            className="rounded-md bg-submit px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-submit/90 disabled:opacity-50"
           >
             Send
           </button>

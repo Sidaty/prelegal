@@ -17,11 +17,13 @@ class PrelegalApplicationTests {
     private MockMvcTester mvc;
 
     @Test
-    void healthReportsUpWithEmptyUsersTable() {
+    void healthReportsUpAndCountsUsers() {
+        // The users count depends on other test classes sharing this application context.
         assertThat(mvc.get().uri("/api/health"))
                 .hasStatusOk()
                 .bodyJson()
-                .isLenientlyEqualTo("{\"status\":\"UP\",\"users\":0}");
+                .isLenientlyEqualTo("{\"status\":\"UP\"}")
+                .extractingPath("$.users").asNumber().isNotNull();
     }
 
     @Test

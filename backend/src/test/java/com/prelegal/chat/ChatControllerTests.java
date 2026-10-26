@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
@@ -33,7 +36,8 @@ class ChatControllerTests {
                 List.of(new Document.Term("governingLaw", "Delaware")));
         given(service.reply(any())).willReturn(new ChatResponse("Noted: Delaware law.", updated));
 
-        assertThat(mvc.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).content("""
+        assertThat(mvc.post().uri("/api/chat").with(user("ada@example.com")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("""
                 {"messages":[{"role":"user","text":"An NDA under Delaware law"}],
                  "document":{"type":"","terms":[],
                              "party1":{"name":"","title":"","company":"","noticeAddress":""},
@@ -50,5 +54,11 @@ class ChatControllerTests {
         verify(service).reply(request.capture());
         assertThat(request.getValue().messages()).containsExactly(new ChatMessage("user", "An NDA under Delaware law"));
         assertThat(request.getValue().document()).isEqualTo(EMPTY_DOCUMENT);
+    }
+
+    @Test
+    void requiresASignedInUser() {
+        assertThat(mvc.post().uri("/api/chat").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .hasStatus(HttpStatus.UNAUTHORIZED);
     }
 }
