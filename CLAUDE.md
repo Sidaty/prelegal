@@ -8,7 +8,7 @@ Les documents disponibles sont répertoriés dans le fichier catalog.json à la 
 
 @catalog.json
 
-Les 11 types de documents sont pris en charge via le chat IA, avec une authentification des utilisateurs et un historique des documents. Voir « État d'implémentation » en fin de fichier pour le détail.
+Les 11 types de documents sont pris en charge via le chat IA, avec une authentification des utilisateurs et un historique des documents. Voir « État actuel », « Décisions clés » et « Pièges connus » en fin de fichier.
 
 ## Processus de développement
 
@@ -56,26 +56,51 @@ Backend disponible sur http://localhost:8000
 
 Ces couleurs sont définies comme tokens Tailwind dans `frontend/src/app/globals.css` : `accent`, `primary`, `submit`, `navy`, `muted`.
 
-## État d'implémentation
+## État actuel (27 octobre 2026)
 
-Fondation V1 en place (issue #9, PR #13 et #14) :
-- **Backend** : Spring Boot 4.1.2, Java 25, Maven, JPA/Hibernate sur SQLite (`hibernate-community-dialects`). `ddl-auto=create` recrée les tables `users` et `documents` à chaque démarrage. Endpoint `GET /api/health`. `StaticFrontendConfig` sert `<route>/index.html` pour les routes exportées. La limite des en-têtes HTTP est portée à 64KB, car les cookies des autres applis sur localhost provoquaient des erreurs 400.
-- **Frontend** : Next.js 16 avec `output: "export"` et `trailingSlash`. `cacheComponents` et PPR sont désactivés car incompatibles avec l'export. `turbopack.root` pointe sur la racine du dépôt pour importer `documents.json`. Le script `copy-templates` (lancé avant `dev` et `build`) copie `templates/` dans `public/templates`, chargés à la demande.
-- **Pages** :
-  - `/` (connexion) et `/signup/` (inscription), avec `AuthForm` et `AuthLayout`.
-  - `/app/` : liste des documents de l'utilisateur (`DocumentList`). Toutes les pages `/app/` passent par `AppShell`, qui affiche la navigation et renvoie vers `/` sans session.
-  - `/app/document/` (nouveau) ou `/app/document/?id=…` (reprise) : créateur de documents (chat IA, aperçu, téléchargement PDF). L'utilisateur choisit le type de document dans le chat.
-- **Chat IA** (issues #10 et #11, PR #15) :
-  - Fonctionnement : `POST /api/chat` reçoit `{messages, document}` (l'état vit dans le navigateur, le backend est sans état). `DocumentChatService` appelle `gemini-3.8-flash` (SDK `google-genai`) en Structured Output et renvoie `{reply, document}`. Le document a la forme `{type, party1, party2, terms: [{key, value}]}`, et le front (`DocumentChat`) remplace son état par celui renvoyé.
-  - `documents.json` (racine du dépôt) est la source unique des types : id, templates, rôles des parties, termes clés avec leur description. Le backend le lit depuis le classpath (`DocumentCatalog`), le frontend l'importe.
-  - Fichiers : le schéma est dans `backend/src/main/resources/chat/response-schema.json`. Ses placeholders `{documentTypes}` et `{termKeys}` sont remplis au démarrage. Le prompt système est dans `chat/system-prompt.txt` : il liste le catalogue, guide l'utilisateur et propose le document le plus proche quand un type n'est pas supporté. Gemini ne supporte qu'un sous-ensemble de JSON Schema (`pattern` n'en fait pas partie).
-  - Rendu : le Mutual NDA garde sa page de garde officielle (`fillCoverPage(toNdaData(draft))`). Les autres documents reçoivent une page « Key Terms » générée (`buildKeyTermsPage`), suivie des conditions standard (`formatStandardTerms`).
-  - Les nouvelles tentatives du SDK sont désactivées (`GeminiConfig`) : elles prenaient environ 30 s et consommaient le quota gratuit (20 requêtes/jour). Un délai d'expiration de 60 s évite qu'un modèle muet bloque indéfiniment une requête de chat.
-- **Utilisateurs et historique** (issue #12) :
-  - Authentification : Spring Security (`SecurityConfig`) avec session HTTP et mots de passe BCrypt. `/api/health` et `/api/auth/register|login` sont publics ; le reste de `/api/**` répond 401 sans session. Le CSRF utilise le mode SPA : cookie `XSRF-TOKEN` renvoyé dans l'en-tête `X-XSRF-TOKEN` par `frontend/src/lib/api.ts`. `AuthController` gère l'inscription (qui connecte aussitôt), la connexion et `me` ; la déconnexion passe par le DSL `logout` (`/api/auth/logout`).
-  - Historique : `SavedDocument` stocke le brouillon et la conversation en JSON. `DocumentController` (`/api/documents`) liste, ouvre, crée et met à jour les documents, toujours filtrés par propriétaire (un document d'un autre utilisateur répond 404). Le front sauvegarde automatiquement après chaque réponse, dès qu'un type est choisi (`lib/history.ts`).
-  - Avertissement « brouillon, soumis à revue juridique » : bandeau au-dessus de l'aperçu et pied de page sur chaque page du PDF.
-- **Docker** : `Dockerfile` multi-stage (export Node, package Maven, JRE 25). Les deux étapes de build copient `documents.json` (et `templates/` pour le frontend) dans `/build`, la racine du dépôt dans l'image. Les scripts `scripts/start-*` passent `.env` au conteneur s'il existe.
-- **Tests** : `cd backend && mvn test`, `cd frontend && npm test`. Le test réel vers Gemini est opt-in, car il consomme du quota : `GEMINI_LIVE_TEST=true mvn test -Dtest=DocumentChatLiveTests`.
+Livré sur `main` : fondation V1 (issue #9, PR #13 et #14), chat IA (issues #10 et #11, PR #15 et #16), comptes et historique (issue #12, PR #17), délai d'expiration Gemini (PR #18).
 
-La base SQLite est temporaire : comptes et documents disparaissent à chaque redémarrage du serveur.
+Parcours utilisateur :
+- `/` (connexion) et `/signup/` (inscription).
+- `/app/` : liste des documents de l'utilisateur.
+- `/app/document/` (nouveau) ou `/app/document/?id=…` (reprise). L'utilisateur décrit son besoin dans le chat ; l'IA choisit l'un des 11 types avec lui, puis pose les questions et remplit le document. L'aperçu se met à jour à chaque réponse, avec un téléchargement PDF.
+- Si le document demandé n'est pas supporté, l'IA l'explique et propose le plus proche.
+- Avertissement « brouillon, soumis à revue juridique » au-dessus de l'aperçu et en pied de chaque page du PDF.
+
+Plan du code :
+- `documents.json` (racine) : les 11 types (id, templates, rôles des parties, termes clés et leur description pour l'IA). Source unique, lue par le backend (classpath, `DocumentCatalog`) et le frontend (import).
+- Backend `com.prelegal` :
+  - `chat/` : `POST /api/chat` (`DocumentChatService`, `GeminiConfig`, `resources/chat/response-schema.json` et `system-prompt.txt`).
+  - `user/` : `AuthController` (`/api/auth/register|login|me`), entité `User`.
+  - `document/` : `DocumentController` (`/api/documents`), entité `SavedDocument` (type, titre, brouillon et conversation en JSON).
+  - `SecurityConfig`, `StaticFrontendConfig`, `HealthController`.
+- Frontend `src/` :
+  - `lib/` : `api.ts` (fetch, CSRF, 401), `auth.ts`, `history.ts`, `chat.ts`, `documents.ts` (catalogue, page « Key Terms », formatage des conditions), `nda.ts` (page de garde officielle du NDA), `markdown.ts`.
+  - `components/` : `AuthForm`, `AuthLayout`, `AppShell`, `DocumentList`, `DocumentCreator`, `DocumentChat`, `DocumentPreview`, `DocumentPdf`.
+
+Tests : `cd backend && mvn test` et `cd frontend && npm test` (lint : `npm run lint`). Les tests réels vers Gemini sont opt-in car ils consomment du quota : `cd backend && set -a && . ../.env && set +a && GEMINI_LIVE_TEST=true mvn test -Dtest=DocumentChatLiveTests`. Ils passent sur `gemini-3.5-flash` (`GEMINI_MODEL=gemini-3.5-flash`) ; **reste à les faire passer sur `gemini-3.8-flash`**, indisponible au moment de la validation.
+
+## Décisions clés
+
+- **Un seul conteneur, un seul port** : Next.js est exporté en statique (`output: "export"`, `trailingSlash`) et servi par Spring Boot. `cacheComponents` et PPR sont désactivés, car incompatibles avec l'export. L'id d'un document passe en paramètre de requête (`?id=`), faute de routes dynamiques.
+- **Base temporaire** : SQLite avec `ddl-auto=create`, recréée à chaque démarrage, comme le permet le cahier des charges.
+- **Chat sans état côté serveur** : le navigateur envoie toute la conversation et le document à chaque tour. Gemini renvoie le document **complet** (pas un patch), ce qui simplifie le front.
+- **Structured Outputs, pas de function calling** : un schéma unique pour tous les types ; les enums des types et des clés de termes sont injectés au démarrage depuis `documents.json`, pour que le schéma ne diverge jamais du catalogue.
+- **`documents.json` rédigé à la main** plutôt qu'extrait des templates : les templates n'ont pas de page de garde (sauf le NDA), et l'IA a besoin de descriptions et d'exemples.
+- **Page « Key Terms » générée** pour les 10 documents sans page de garde ; le Mutual NDA garde sa page officielle via l'adaptateur `toNdaData`.
+- **Templates chargés à la demande** depuis `/templates/` (copiés dans `public/` par `copy-templates`, script Node pour marcher aussi sous Windows) plutôt qu'embarqués dans le HTML (environ 270 Ko).
+- **Authentification par session** (Spring Security, BCrypt, `csrf.spa()`) plutôt que JWT : même origine, et les sessions disparaissent de toute façon au redémarrage. La connexion passe par un contrôleur JSON qui change l'id de session et enregistre explicitement le contexte.
+- **Historique séparé du chat** : `/api/documents` est un CRUD distinct, appelé par le front après chaque réponse dès qu'un type est choisi. Les sauvegardes sont enchaînées l'une après l'autre (`useRef`), pour éviter un doublon ou l'écrasement d'une version récente.
+- **Gemini en échec rapide** : une seule tentative (le défaut du SDK faisait 5 requêtes en environ 33 s) et un délai de 60 s. L'utilisateur renvoie simplement son message.
+- **Nommage** : en TypeScript, le type est `LegalDocument` et les variables `draft`, pour ne pas entrer en collision avec le `Document` du DOM et celui de react-pdf. En Java, le record reste `Document`.
+- **Design** : palette du projet en tokens Tailwind (plus `surface` et `line`), Geist pour l'interface et une serif pour le document, liste en lignes plutôt qu'en cartes. Le jaune est réservé au trait de signature (motif du panneau de connexion).
+
+## Pièges connus
+
+- **Cookies localhost** : les autres applis sur `localhost` envoient leurs cookies sur le port 8000 et dépassaient les 8 Ko d'en-têtes de Tomcat (erreur 400). La limite est portée à 64 Ko.
+- **BCrypt** limite les mots de passe à 72 octets : Spring Security 7 lève une exception au-delà. Les mots de passe sont donc limités à 8 à 72 caractères, en vérifiant les octets.
+- **Quota Gemini gratuit** : 20 requêtes par jour et par modèle ; Google vérifie le quota avant de valider le schéma. `gemini-3.8-flash` a renvoyé des 503 et, le 27 octobre 2026, n'a plus répondu du tout pendant plusieurs minutes.
+- **Gemini et JSON Schema** : seul un sous-ensemble est supporté. `pattern` est absent ; `format: "date"`, `anyOf`, `enum`, `$ref` et `$defs` fonctionnent.
+- **Tests Spring** : les classes de test partagent le même contexte, donc la même base. Ne jamais supposer une table vide. MockMvc ne suit pas les forwards et ne passe pas par le parseur d'en-têtes de Tomcat (utiliser un vrai serveur pour ça). Après un renommage de test, lancer `mvn clean test` pour ne pas lire un vieux rapport.
+- **Turbopack** n'importe rien hors de sa racine : d'où `turbopack.root` sur la racine du dépôt.
+- **Scripts macOS** : bash 3.2 échoue sur un tableau vide avec `set -u` (les scripts `start-*` utilisent `set -eo pipefail`) ; `sed` ne connaît pas `\b` (utiliser `perl`) ; `timeout` n'existe pas.
