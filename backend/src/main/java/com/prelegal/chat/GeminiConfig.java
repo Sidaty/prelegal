@@ -11,9 +11,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GeminiConfig {
 
-    /** One attempt only: the SDK's default retries take ~30s and burn quota; the user can resend instead. */
+    /**
+     * One attempt only: the SDK's default retries take ~30s and burn quota; the user can resend instead.
+     * Without a timeout (in milliseconds), a model that never answers blocks the chat request forever.
+     */
     static final HttpOptions HTTP_OPTIONS = HttpOptions.builder()
             .retryOptions(HttpRetryOptions.builder().attempts(1))
+            .timeout(60_000)
             .build();
 
     @Bean
